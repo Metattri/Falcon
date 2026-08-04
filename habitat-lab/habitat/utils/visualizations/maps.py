@@ -470,7 +470,7 @@ def get_topdown_map(
         )
 
     top_down_map = pathfinder.get_topdown_view(
-        meters_per_pixel=meters_per_pixel, height=height
+        meters_per_pixel=meters_per_pixel, height=height, eps=1.0
     ).astype(np.uint8)
 
     # Draw border if necessary
