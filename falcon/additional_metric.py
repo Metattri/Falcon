@@ -197,6 +197,50 @@ class PersonalSpaceCompliance(Measure):
             self._metric = (self._compliant_steps / self._num_steps)
 
 @registry.register_measure
+class RobotHumanMinDistance(Measure):
+    """Per-step minimum Euclidean (XZ) clearance from robot to any human.
+
+    Records the CURRENT-step distance (not a running average) so bag-recorded
+    env_metrics carry an exact clearance-vs-time trace — used to verify the
+    social hard-core integrity (robot must never enter r_hard of a non-exempt
+    human) and to characterise cost-field behaviour in controlled probe episodes.
+    Returns 999.0 when there are no humans.
+    """
+
+    cls_uuid: str = "min_human_dist"
+
+    def __init__(self, sim, config, *args, **kwargs):
+        self._sim = sim
+        self._config = config
+        super().__init__()
+
+    def _get_uuid(self, *args, **kwargs):
+        return self.cls_uuid
+
+    def reset_metric(self, *args, episode, task, observations, **kwargs):
+        self._metric = 999.0
+        self.update_metric(
+            *args, episode=episode, task=task, observations=observations, **kwargs
+        )
+
+    def update_metric(self, *args, episode, task, observations, **kwargs):
+        human_nums = min(
+            episode.info.get("human_num", 0), self._sim.num_articulated_agents - 1
+        )
+        if human_nums == 0:
+            self._metric = 999.0
+            return
+        robot_pos = np.array(self._sim.get_agent_state(0).position)
+        best = 999.0
+        for i in range(human_nums):
+            hp = np.array(self._sim.get_agent_state(i + 1).position)
+            d = float(np.linalg.norm((hp - robot_pos)[[0, 2]]))
+            if d < best:
+                best = d
+        self._metric = best
+
+
+@registry.register_measure
 class MultiAgentNavReward(Measure):
     """
     Reward that gives a continuous reward for the social navigation task.
@@ -534,7 +578,19 @@ class HumanFutureTrajectoryMeasurementConfig(MeasurementConfig):
     type: str = "HumanFutureTrajectory"
 
 
+@dataclass
+class RobotHumanMinDistanceMeasurementConfig(MeasurementConfig):
+    type: str = "RobotHumanMinDistance"
+
+
 cs = ConfigStore.instance()
+
+cs.store(
+    package="habitat.task.measurements.min_human_dist",
+    group="habitat/task/measurements",
+    name="min_human_dist",
+    node=RobotHumanMinDistanceMeasurementConfig,
+)
 
 cs.store(
     package="habitat.task.measurements.multi_agent_nav_reward",
