@@ -17,6 +17,7 @@ from typing import (
     Optional,
     Tuple,
     Union,
+    cast,
 )
 
 import magnum as mn
@@ -29,6 +30,7 @@ from habitat.core.simulator import AgentState, Observations
 from habitat.datasets.rearrange.navmesh_utils import get_largest_island_index
 from habitat.datasets.rearrange.rearrange_dataset import RearrangeEpisode
 from habitat.datasets.rearrange.samplers.receptacle import (
+    AABBReceptacle,
     Receptacle,
     find_receptacles,
     get_excluded_recs_from_filter_file,
@@ -833,7 +835,10 @@ class RearrangeSim_v2(HabitatSim):
                 self.set_object_bb_draw(True, ro.object_id)
                 ro.transformation = transform
                 make_render_only(ro, self)
-                bb = get_rigid_aabb(ro.object_id, self, True)
+                # bb = get_rigid_aabb(ro.object_id, self, True)
+                bb = habitat_sim.geo.get_transformed_bb(
+                    ro.aabb, ro.transformation
+                )
                 bb_viz_name1 = target_handle + "_bb1"
                 bb_viz_name2 = target_handle + "_bb2"
                 viz_r = 0.01
